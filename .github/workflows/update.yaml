@@ -1,0 +1,52 @@
+name: Download and Update
+
+on:
+  schedule:
+    - cron: "5 2 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  update_page:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+        working-directory: ./.github/workflows
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-activate-base: false
+          activate-environment: covid
+          python-version: 3.9
+          miniconda-version: "latest"
+          channels: conda-forge,defaults
+      - name: Install requirements from requirements.txt
+        run: pip install -r ./requirements.txt
+        working-directory: ./
+      - name: Run Download scheduler
+        run: python ./.github/workflows/schedule.py
+        continue-on-error: true
+        working-directory: ./
+      - name: process Fallzahlen
+        run: python ./.github/workflows/process_RKI_Covid_update.py
+        continue-on-error: true
+        timeout-minutes: 60
+        working-directory: ./
+      - name: Commit files
+        run: |
+          git config --local user.name "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.email "github-actions[bot]"
+          git add ':/*.csv'
+          git status -s
+          git commit -m "update on $(date '+%Y-%m-%dT%H:%M:%SZ')"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
