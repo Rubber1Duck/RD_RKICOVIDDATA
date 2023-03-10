@@ -1,9 +1,8 @@
-import os, lzma
+import os
 import datetime as dt
 import pandas as pd
 import re
 
-from repo_tools_pkg.file_tools import find_latest_file
 
 # %%
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
@@ -42,7 +41,12 @@ for file_path_full, report_date in all_files:
   start = dt.datetime.now()
   start.microsecond
   covid_df = pd.read_csv(file_path_full, usecols=CV_dtypes.keys(), dtype=CV_dtypes)
+  try:
+    covid_df['Meldedatum'] = pd.to_datetime(covid_df['Meldedatum']).dt.date
+  except:
+    covid_df['Meldedatum'] = pd.to_datetime(covid_df['Meldedatum'], unit='ms').dt.date
   size_old = os.path.getsize(file_path_full)
+  lines = covid_df.shape[0]
 
   # archiv data File
   dataFile ="RKI_COVID19_" + report_date + ".csv"
@@ -60,5 +64,7 @@ for file_path_full, report_date in all_files:
         size_new,
         '=',
         round(size_new/size_old*100,2),
-        '% prozessing time:',
+        '% lines:',
+        lines,
+        'prozessing time:',
         end - start)
