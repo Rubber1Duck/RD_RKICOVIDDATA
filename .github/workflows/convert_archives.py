@@ -21,6 +21,16 @@ CV_dtypes = {
     'AnzahlGenesen': 'Int32',
     'Meldedatum':'object'}
 
+CV_dtypes_old = {
+    'IdLandkreis': 'Int32',
+    'Altersgruppe': 'str',
+    'Geschlecht': 'str',
+    'NeuerFall': 'Int32',
+    'NeuerTodesfall': 'Int32',
+    'AnzahlFall': 'Int32',
+    'AnzahlTodesfall':'Int32',
+    'Meldedatum':'object'}
+
 iso_date_re = '([0-9]{4})(-?)(1[0-2]|0[1-9])\\2(3[01]|0[1-9]|[12][0-9])'
 file_list = os.listdir(path)
 file_list.sort(reverse=False)
@@ -40,20 +50,29 @@ for file in file_list:
 for file_path_full, report_date in all_files:
   start = dt.datetime.now()
   start.microsecond
-  covid_df = pd.read_csv(file_path_full, usecols=CV_dtypes.keys(), dtype=CV_dtypes)
+  try:
+    covid_df = pd.read_csv(file_path_full, usecols=CV_dtypes.keys(), dtype=CV_dtypes)
+  except:
+    covid_df = pd.read_csv(file_path_full, usecols=CV_dtypes_old.keys(), dtype=CV_dtypes_old)
   try:
     covid_df['Meldedatum'] = pd.to_datetime(covid_df['Meldedatum']).dt.date
   except:
     covid_df['Meldedatum'] = pd.to_datetime(covid_df['Meldedatum'], unit='ms').dt.date
+  covid_df.sort_values(by=['IdLandkreis', 'Altersgruppe' ,'Geschlecht', 'Meldedatum'], axis=0, inplace=True, ignore_index=True)
   size_old = os.path.getsize(file_path_full)
   lines = covid_df.shape[0]
 
   # archiv data File
   dataFile ="RKI_COVID19_" + report_date + ".csv"
   dataFilePath = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', dataFile)
-  with open(dataFilePath, 'wb') as dataCsv:
+  try:
+    with open(dataFilePath, 'wb') as dataCsv:
       covid_df.to_csv(dataCsv, index=False, header=True, lineterminator='\n', encoding= 'utf-8',
                       date_format='%Y-%m-%d', columns=CV_dtypes.keys())
+  except:
+    with open(dataFilePath, 'wb') as dataCsv:
+      covid_df.to_csv(dataCsv, index=False, header=True, lineterminator='\n', encoding= 'utf-8',
+                      date_format='%Y-%m-%d', columns=CV_dtypes_old.keys()) 
   size_new = os.path.getsize(dataFilePath)
   end = dt.datetime.now()
   end.microsecond
